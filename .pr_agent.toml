@@ -1,4 +1,4 @@
 [config]
-model = "openrouter/qwen/qwen3.8-27b:free"
-fallback_models = []
+model = "openrouter/stealth/space-bunny-alpha"
+fallback_models = ["openrouter/qwen/qwen3.8-27b:free"]
 custom_model_max_tokens = 32000
