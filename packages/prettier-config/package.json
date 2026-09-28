@@ -1,0 +1,24 @@
+{
+  "name": "@janesenaj42/prettier-config",
+  "version": "0.1.0",
+  "description": "The team's Prettier rules.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/janesenaj42/init-react.git",
+    "directory": "packages/prettier-config"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  }
+}

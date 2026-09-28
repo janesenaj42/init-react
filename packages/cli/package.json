@@ -1,0 +1,40 @@
+{
+  "name": "@janesenaj42/init-react",
+  "version": "0.1.0",
+  "description": "Brings a TypeScript React project up to the team's lint, format, commit and release Standard.",
+  "type": "module",
+  "bin": {
+    "init-react": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/janesenaj42/init-react.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commit-and-tag-version": "^13.2.1",
+    "semver": "^7.7.2",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "@types/semver": "^7.7.1",
+    "tsup": "^8.5.1",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.2"
+  }
+}

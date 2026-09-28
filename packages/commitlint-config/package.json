@@ -1,0 +1,31 @@
+{
+  "name": "@janesenaj42/commitlint-config",
+  "version": "0.1.0",
+  "description": "The team's commit message convention (Conventional Commits).",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/janesenaj42/init-react.git",
+    "directory": "packages/commitlint-config"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "peerDependencies": {
+    "@commitlint/cli": "^21.0.0"
+  },
+  "dependencies": {
+    "@commitlint/config-conventional": "^21.2.3",
+    "conventional-changelog-conventionalcommits": "^10.4.0"
+  }
+}

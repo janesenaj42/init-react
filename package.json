@@ -1,0 +1,51 @@
+{
+  "name": "init-react-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "set-scope": "node scripts/set-scope.mjs",
+    "release:patch": "commit-and-tag-version --release-as patch",
+    "release:minor": "commit-and-tag-version --release-as minor",
+    "release:major": "commit-and-tag-version --release-as major"
+  },
+  "commit-and-tag-version": {
+    "bumpFiles": [
+      {
+        "filename": "package.json",
+        "type": "json"
+      },
+      {
+        "filename": "packages/cli/package.json",
+        "type": "json"
+      },
+      {
+        "filename": "packages/eslint-config/package.json",
+        "type": "json"
+      },
+      {
+        "filename": "packages/prettier-config/package.json",
+        "type": "json"
+      },
+      {
+        "filename": "packages/commitlint-config/package.json",
+        "type": "json"
+      }
+    ]
+  },
+  "prettier": "@janesenaj42/prettier-config",
+  "devDependencies": {
+    "@janesenaj42/prettier-config": "workspace:*",
+    "commit-and-tag-version": "^13.2.1",
+    "prettier": "^3.9.9"
+  }
+}
