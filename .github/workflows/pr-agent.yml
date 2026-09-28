@@ -19,9 +19,11 @@ jobs:
         uses: The-PR-Agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENROUTER.KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          config.model: "openrouter/anthropic/claude-sonnet-5"
-          config.fallback_models: '["openrouter/openai/gpt-5-mini"]'
-          github_action_config.auto_review: "true"
-          github_action_config.auto_describe: "true"
-          github_action_config.auto_improve: "true"
+          OPENROUTER__KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CONFIG__MODEL: "openrouter/qwen/qwen3.8-27b:free"
+          # Free-tier model isn't in litellm's known-model list, so give it an explicit context size.
+          # Check https://openrouter.ai/qwen/qwen3.8-27b:free for the model's actual token limit.
+          CONFIG__CUSTOM_MODEL_MAX_TOKENS: "32000"
+          GITHUB_ACTION_CONFIG__AUTO_REVIEW: "true"
+          GITHUB_ACTION_CONFIG__AUTO_DESCRIBE: "true"
+          GITHUB_ACTION_CONFIG__AUTO_IMPROVE: "true"
