@@ -1,7 +1,4 @@
 [config]
 model = "openrouter/qwen/qwen3.8-27b:free"
 fallback_models = []
-# Free-tier model isn't in litellm's known-model list, so give it an explicit
-# context size. Check https://openrouter.ai/qwen/qwen3.8-27b:free for the
-# model's actual token limit.
 custom_model_max_tokens = 32000

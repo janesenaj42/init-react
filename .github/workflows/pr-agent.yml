@@ -1,6 +1,3 @@
-# Runs PR-Agent (https://github.com/The-PR-Agent/pr-agent) on PRs, using OpenRouter
-# as the model provider. Requires an OPENROUTER_API_KEY repo secret
-# (Settings > Secrets and variables > Actions).
 name: PR Agent
 on:
   pull_request:
@@ -19,11 +16,6 @@ jobs:
         uses: The-PR-Agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # litellm's own provider-key lookup (PROVIDER_API_KEY_ENV_VARS["openrouter"] in
-          # pr_agent/algo/ai_handlers/cloud_auth.py) reads this exact flat var name directly
-          # via os.environ -- no dot/double-underscore nesting needed or reliable here.
-          # model + custom_model_max_tokens are set in .pr_agent.toml at the repo root instead,
-          # since that's a real TOML [config] table and unambiguously merges into settings.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
