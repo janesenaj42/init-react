@@ -16,7 +16,10 @@
     "set-scope": "node scripts/set-scope.mjs",
     "release:patch": "commit-and-tag-version --release-as patch",
     "release:minor": "commit-and-tag-version --release-as minor",
-    "release:major": "commit-and-tag-version --release-as major"
+    "release:major": "commit-and-tag-version --release-as major",
+    "release:alpha": "commit-and-tag-version --prerelease alpha --skip.changelog",
+    "release:beta": "commit-and-tag-version --prerelease beta --skip.changelog",
+    "release:rc": "commit-and-tag-version --prerelease rc --skip.changelog"
   },
   "commit-and-tag-version": {
     "bumpFiles": [
