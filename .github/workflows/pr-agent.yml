@@ -19,14 +19,12 @@ jobs:
         uses: The-PR-Agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Per https://docs.pr-agent.ai/usage-guide/changing_a_model/#openrouter, the openrouter
-          # key is passed via the double-underscore env var form; everything else below follows
-          # https://docs.pr-agent.ai/installation/github/#run-as-a-github-action, which uses dots.
-          OPENROUTER__KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          config.model: "openrouter/qwen/qwen3.8-27b:free"
-          # Free-tier model isn't in litellm's known-model list, so give it an explicit context size.
-          # Check https://openrouter.ai/qwen/qwen3.8-27b:free for the model's actual token limit.
-          config.custom_model_max_tokens: "32000"
+          # litellm's own provider-key lookup (PROVIDER_API_KEY_ENV_VARS["openrouter"] in
+          # pr_agent/algo/ai_handlers/cloud_auth.py) reads this exact flat var name directly
+          # via os.environ -- no dot/double-underscore nesting needed or reliable here.
+          # model + custom_model_max_tokens are set in .pr_agent.toml at the repo root instead,
+          # since that's a real TOML [config] table and unambiguously merges into settings.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "true"
