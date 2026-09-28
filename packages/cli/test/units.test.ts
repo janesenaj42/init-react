@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { isScaffoldDefault } from "../src/fingerprints.js";
 import {
   isUneditedManagedFile,
+  MARKDOWN_BLOCK,
   readBlock,
   stamp,
   upsertBlock,
@@ -58,6 +59,17 @@ describe("Managed Blocks", () => {
     expect(second).toMatch(/^before\n/);
     expect(second).toMatch(/after\n$/);
     expect(second.match(/^# >>> /gm)).toHaveLength(1);
+  });
+
+  it("uses HTML comment markers for Markdown, so they render invisibly", () => {
+    const result = upsertBlock(
+      "# My App\n\nSome docs.\n",
+      "## Scripts\n\n...",
+      MARKDOWN_BLOCK,
+    );
+    expect(result).toContain("# My App\n\nSome docs.");
+    expect(result).toContain("<!-- >>> init-react >>> -->");
+    expect(readBlock(result, MARKDOWN_BLOCK)).toContain("## Scripts");
   });
 });
 

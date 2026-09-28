@@ -26,23 +26,45 @@ export function isUneditedManagedFile(content: string): boolean {
   return sha256(normalized.slice(newline + 1)).slice(0, 16) === match[1];
 }
 
-// A Managed Block is our section inside a file other people also write to (git hooks).
-// The markers leave out the scope so blocks survive a move to another scope.
-const BLOCK_START = "# >>> init-react >>>";
-const BLOCK_END = "# <<< init-react <<<";
+// A Managed Block is our section inside a file other people also write to (git hooks,
+// a Target Project's README). The markers leave out the scope so blocks survive a move
+// to another scope.
+export interface BlockMarkers {
+  start: string;
+  end: string;
+}
 
-export function readBlock(content: string | null): string | null {
+/** Shell scripts (git hooks): `#` is a comment. */
+export const SHELL_BLOCK: BlockMarkers = {
+  start: "# >>> init-react >>>",
+  end: "# <<< init-react <<<",
+};
+
+/** Markdown (README): an HTML comment so the markers don't render as text. */
+export const MARKDOWN_BLOCK: BlockMarkers = {
+  start: "<!-- >>> init-react >>> -->",
+  end: "<!-- <<< init-react <<< -->",
+};
+
+export function readBlock(
+  content: string | null,
+  markers: BlockMarkers = SHELL_BLOCK,
+): string | null {
   if (content === null) return null;
-  const start = content.indexOf(BLOCK_START);
-  const end = content.indexOf(BLOCK_END);
+  const start = content.indexOf(markers.start);
+  const end = content.indexOf(markers.end);
   if (start === -1 || end === -1 || end < start) return null;
-  return content.slice(start, end + BLOCK_END.length);
+  return content.slice(start, end + markers.end.length);
 }
 
 /** Replaces our block in `content`, or appends it; everything outside the block is untouched. */
-export function upsertBlock(content: string | null, blockBody: string): string {
-  const block = `${BLOCK_START}\n${blockBody.trim()}\n${BLOCK_END}`;
-  const existing = readBlock(content);
+export function upsertBlock(
+  content: string | null,
+  blockBody: string,
+  markers: BlockMarkers = SHELL_BLOCK,
+): string {
+  const block = `${markers.start}\n${blockBody.trim()}\n${markers.end}`;
+  const existing = readBlock(content, markers);
   if (content === null || content.trim() === "") return block + "\n";
   // A replacer function, because the block holds shell `$1`, which string replace would expand.
   if (existing !== null) return content.replace(existing, () => block);
