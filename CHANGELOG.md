@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.2](https://github.com/janesenaj42/init-react/compare/v0.1.1...v0.1.2) (2026-09-29)
+
+### Bug Fixes
+
+* stop test hardcoding the release version ([9ff8290](https://github.com/janesenaj42/init-react/commit/9ff82906f803b82df8b3c30c225f4e796470106e))
+
 ## [0.1.1](https://github.com/janesenaj42/init-react/compare/v0.1.0...v0.1.1) (2026-09-29)
 
 ### Bug Fixes

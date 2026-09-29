@@ -1,6 +1,6 @@
 {
   "name": "@janesenaj42/prettier-config",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The team's Prettier rules.",
   "type": "module",
   "main": "./index.js",
