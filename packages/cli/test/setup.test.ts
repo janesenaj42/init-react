@@ -36,6 +36,15 @@ describe("setup on a Vite project inside a larger repository", () => {
       "@janesenaj42:registry=https://npm.pkg.github.com",
     );
 
+    // The Standard also documents its scripts in the Target Project's own README,
+    // so the team can find them without reading this CLI's docs.
+    const readme = read(join(repo.project, "README.md"));
+    expect(readme).toContain("<!-- >>> init-react >>> -->");
+    expect(readme).toContain("| `npm run lint` | Lint with ESLint |");
+    expect(readme).toContain(
+      "`npm run release:alpha` / `npm run release:beta`",
+    );
+
     // Hooks and CI belong to the repository, so they live at its root.
     expect(read(join(repo.root, ".husky/pre-commit"))).toContain(
       'for dir in "frontend"',
@@ -144,6 +153,39 @@ describe("GitLab", () => {
 
     applySetup(repo.project);
     expect(read(ciPath).match(/init-react\/web\.yml/g)).toHaveLength(1);
+  });
+});
+
+describe("README", () => {
+  it("adds its block to an existing README without touching the rest", () => {
+    const repo = makeRepo("vite8");
+    write(
+      join(repo.project, "README.md"),
+      "# My App\n\nSome docs the team wrote.\n",
+    );
+    applySetup(repo.project);
+    const readme = read(join(repo.project, "README.md"));
+    expect(readme).toContain("# My App\n\nSome docs the team wrote.");
+    expect(readme).toContain("<!-- >>> init-react >>> -->");
+  });
+
+  it("overwrites its own block, like the shared git hooks do", () => {
+    const repo = makeRepo("vite8");
+    applySetup(repo.project);
+    const path = join(repo.project, "README.md");
+    write(path, read(path).replace("Lint with ESLint", "Lint with ESLint!!"));
+    applySetup(repo.project);
+    expect(read(path)).not.toContain("Lint with ESLint!!");
+    expect(read(path)).toContain("Lint with ESLint");
+  });
+
+  it("uses the project's package manager to run scripts", () => {
+    const repo = makeRepo("vite8");
+    write(join(repo.project, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+    applySetup(repo.project);
+    expect(read(join(repo.project, "README.md"))).toContain(
+      "| `pnpm lint` | Lint with ESLint |",
+    );
   });
 });
 

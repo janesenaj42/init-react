@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { OWN_VERSION } from "../constants.js";
+import type { Project } from "../project.js";
 
 /**
  * The range to install a Shared Config Package at. The packages are released in
@@ -28,4 +29,9 @@ export function sharedPackageRange(name: string): string {
 /** Config files use `.js` in ESM projects (Vite's default) and `.mjs` otherwise. */
 export function configFileName(base: string, esm: boolean): string {
   return `${base}.${esm ? "js" : "mjs"}`;
+}
+
+/** How to invoke a package.json script with this project's package manager. */
+export function runScript(project: Project, script: string): string {
+  return project.pm === "npm" ? `npm run ${script}` : `${project.pm} ${script}`;
 }

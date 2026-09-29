@@ -1,12 +1,14 @@
 import { CLI_PACKAGE, type Tool } from "./constants.js";
 import { Plan } from "./plan.js";
-import { detectProject, type CiProvider, type Project } from "./project.js";
+import { detectProject, type CiProvider } from "./project.js";
 import { ciStep } from "./steps/ci.js";
 import { commitlintStep } from "./steps/commitlint.js";
 import { eslintStep } from "./steps/eslint.js";
 import { hooksStep, lintStagedStep } from "./steps/hooks.js";
 import { prettierStep } from "./steps/prettier.js";
+import { readmeStep } from "./steps/readme.js";
 import { registryStep, releaseStep } from "./steps/release.js";
+import { runScript } from "./steps/standard.js";
 import { run } from "./util.js";
 
 export interface SetupOptions {
@@ -28,6 +30,7 @@ export function planSetup(cwd: string, options: SetupOptions): Plan {
   hooksStep(plan);
   releaseStep(plan, options.releaseBranch);
   ciStep(plan, options.ci);
+  readmeStep(plan);
   return plan;
 }
 
@@ -87,8 +90,4 @@ function printPlan(plan: Plan): void {
   for (const entry of plan.entries.filter((e) => e.kind !== "note")) {
     console.log(`  ${SYMBOLS[entry.kind]} ${entry.text}`);
   }
-}
-
-function runScript(project: Project, script: string): string {
-  return project.pm === "npm" ? `npm run ${script}` : `${project.pm} ${script}`;
 }
