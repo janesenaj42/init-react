@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { OWN_VERSION } from "../src/constants.js";
 import { stamp } from "../src/managed.js";
 import { release } from "../src/release.js";
 import { planSetup } from "../src/setup.js";
@@ -24,7 +25,9 @@ describe("setup on a Vite project inside a larger repository", () => {
       "@janesenaj42/eslint-config",
     );
     expect(pkg.devDependencies["eslint-plugin-react-hooks"]).toBeUndefined();
-    expect(pkg.devDependencies["@janesenaj42/eslint-config"]).toBe("^0.1.0");
+    expect(pkg.devDependencies["@janesenaj42/eslint-config"]).toBe(
+      `^${OWN_VERSION}`,
+    );
     expect(pkg.scripts.lint).toBe("eslint .");
     expect(pkg.scripts.prepare).toBe("cd .. && husky");
     expect(pkg.scripts.typecheck).toBe("tsc -b");

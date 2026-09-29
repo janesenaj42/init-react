@@ -22,6 +22,9 @@
     "release:rc": "commit-and-tag-version --prerelease rc --skip.changelog"
   },
   "commit-and-tag-version": {
+    "scripts": {
+      "postbump": "pnpm run build && pnpm run test"
+    },
     "bumpFiles": [
       {
         "filename": "package.json",
