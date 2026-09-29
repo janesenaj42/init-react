@@ -6,10 +6,15 @@ on:
 permissions:
   issues: write
   pull-requests: write
-  contents: write
+  contents: read
 jobs:
   pr_agent:
-    if: ${{ github.event.sender.type != 'Bot' }}
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      (github.event_name == 'pull_request' ||
+      github.event.issue.pull_request) &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: PR Agent action step
@@ -17,7 +22,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          PR_AGENT_CONFIG_BRANCH: ${{ github.head_ref }}
+          PR_AGENT_CONFIG_BRANCH: ${{ github.head_ref || github.event.repository.default_branch }}
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "true"
