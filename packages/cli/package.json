@@ -1,6 +1,6 @@
 {
   "name": "@janesenaj42/init-react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Brings a TypeScript React project up to the team's lint, format, commit and release Standard.",
   "type": "module",
   "bin": {
