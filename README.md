@@ -1,6 +1,6 @@
 # init-react
 
-One command that brings a TypeScript React project up to the team's **Standard**: ESLint, Prettier, a commit convention (commitlint + commitizen), pre-commit hooks (husky + lint-staged), a CI check (GitHub Actions or GitLab CI) and local releases (commit-and-tag-version).
+One command that brings a TypeScript React project up to the team's **Standard**: ESLint, Prettier, a commit convention (commitlint + commitizen), pre-commit hooks (lefthook + lint-staged), a CI check (GitHub Actions or GitLab CI) and local releases (commit-and-tag-version).
 
 ```bash
 npx @janesenaj42/init-react            # apply the Standard
@@ -35,9 +35,11 @@ What it does:
 
 - **ESLint and Prettier**: writes `eslint.config.js` / `prettier.config.js` that extend the shared packages, plus `lint`, `format`, `format:check` and `typecheck` scripts. Vite's unedited lint setup is replaced, including Vite 9's oxlint.
 - **Commit Convention**: `commitlint.config.js`, plus commitizen (`npm run commit` asks you questions and writes the message).
-- **Git hooks** (at the repository root, shared by every project in it):
-  - pre-commit runs lint-staged (ESLint `--fix` + Prettier) on staged files, per project. Commits that touch only other folders (e.g. a Java backend) skip it and don't need Node.
+- **Git hooks** through [lefthook](https://lefthook.dev), at the repository root and shared by every project in it ([ADR 0002](docs/adr/0002-git-hooks-through-lefthook.md)):
+  - pre-commit runs lint-staged (ESLint `--fix` + Prettier) on staged files, one project after another. A project with nothing staged is skipped, so commits that touch only other folders (e.g. a Java backend) don't need Node.
   - commit-msg runs commitlint for every commit in the repository.
+  - They live in `lefthook-init-react.yml`, which the CLI rewrites on every run. Your repository's own `lefthook.yml` only gets an `extends:` line pointing at it (the CLI creates `lefthook.yml` if there is none), so your own hooks stay yours. If your config already has an `extends:` list, the CLI asks you to add the file yourself.
+  - lefthook needs git 2.31 or later, and can't install while another tool (such as husky) has set git's `core.hooksPath`; the CLI warns about both.
 - **CI Check**: GitHub or GitLab, detected from the `origin` remote. It runs lint, format check and typecheck when the project changes, and commitlint on every PR/MR. On GitLab, only `include:` lines are added to your root `.gitlab-ci.yml`.
 - **Release scripts**: see below.
 - **`.npmrc`**: points `@janesenaj42` at GitHub Packages.
@@ -54,7 +56,7 @@ npx @janesenaj42/init-react --force=eslint,prettier   # only these tools
 npx @janesenaj42/init-react --force                   # everything
 ```
 
-Tools: `eslint`, `prettier`, `commitlint`, `lint-staged`, `husky`, `ci`, `release`.
+Tools: `eslint`, `prettier`, `commitlint`, `lint-staged`, `lefthook`, `ci`, `release`.
 
 Files the CLI writes start with a `Managed by …` line. Re-running a newer version of the CLI updates them, **as long as nobody has edited them**. Once you edit one, it's yours and is never touched again (unless you use `--force`). Re-running when everything is current changes nothing.
 

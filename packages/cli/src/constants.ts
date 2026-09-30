@@ -16,7 +16,7 @@ export const TOOLS = [
   "prettier",
   "commitlint",
   "lint-staged",
-  "husky",
+  "lefthook",
   "ci",
   "release",
 ] as const;
@@ -26,7 +26,7 @@ export type Tool = (typeof TOOLS)[number];
 export const THIRD_PARTY_RANGES = {
   eslint: "^10.0.0",
   prettier: "^3.9.9",
-  husky: "^9.1.7",
+  lefthook: "^2.1.15",
   "lint-staged": "^16.4.0",
   "@commitlint/cli": "^21.2.3",
   commitizen: "^4.3.2",

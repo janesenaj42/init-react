@@ -1,8 +1,10 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { OWN_VERSION } from "../src/constants.js";
 import { stamp } from "../src/managed.js";
+import { HOOKS_FILE } from "../src/steps/hooks.js";
 import { release } from "../src/release.js";
 import { planSetup } from "../src/setup.js";
 import { UserError } from "../src/util.js";
@@ -29,7 +31,7 @@ describe("setup on a Vite project inside a larger repository", () => {
       `^${OWN_VERSION}`,
     );
     expect(pkg.scripts.lint).toBe("eslint .");
-    expect(pkg.scripts.prepare).toBe("cd .. && husky");
+    expect(pkg.scripts.prepare).toBe("lefthook install");
     expect(pkg.scripts.typecheck).toBe("tsc -b");
     expect(pkg["init-react"]).toEqual({
       releaseBranch: "main",
@@ -49,9 +51,8 @@ describe("setup on a Vite project inside a larger repository", () => {
     );
 
     // Hooks and CI belong to the repository, so they live at its root.
-    expect(read(join(repo.root, ".husky/pre-commit"))).toContain(
-      'for dir in "frontend"',
-    );
+    expect(read(join(repo.root, HOOKS_FILE))).toContain("root: frontend/");
+    expect(read(join(repo.root, "lefthook.yml"))).toContain(`- ${HOOKS_FILE}`);
     expect(
       existsSync(join(repo.root, ".github/workflows/init-react-frontend.yml")),
     ).toBe(true);
@@ -84,9 +85,15 @@ describe("setup on a Vite project inside a larger repository", () => {
     applySetup(repo.project);
     const admin = addProject(repo.root, "vite8", "apps/admin");
     applySetup(admin);
-    const hook = read(join(repo.root, ".husky/pre-commit"));
-    expect(hook).toContain('for dir in "apps/admin" "apps/web"');
-    expect(hook.match(/^# >>> /gm)).toHaveLength(1);
+    const hooks = parse(read(join(repo.root, HOOKS_FILE)));
+    const group = hooks["pre-commit"].jobs[0].group;
+    expect(group.jobs.map((job: { root: string }) => job.root)).toEqual([
+      "apps/admin/",
+      "apps/web/",
+    ]);
+    expect(hooks["commit-msg"].jobs[0].run).toContain(
+      'for dir in "apps/admin" "apps/web"',
+    );
     // The shared commitlint workflow still runs from the first project.
     expect(
       read(join(repo.root, ".github/workflows/init-react-commitlint.yml")),
@@ -133,6 +140,41 @@ describe("Existing Config", () => {
   });
 });
 
+describe("a repository with its own lefthook config", () => {
+  const own =
+    "# Repo hooks\npre-commit:\n  parallel: true\n  commands:\n    json-valid:\n      run: echo ok # keep\n";
+
+  it("extends it with the Standard's hooks, leaving the rest alone", () => {
+    const repo = makeRepo("vite8", { relDir: "frontend/appbar" });
+    const configPath = join(repo.root, "lefthook.yml");
+    write(configPath, own);
+    applySetup(repo.project);
+
+    const config = read(configPath);
+    expect(config.startsWith(own)).toBe(true);
+    expect(parse(config)).toMatchObject({
+      extends: [HOOKS_FILE],
+      "pre-commit": { parallel: true },
+    });
+
+    applySetup(repo.project);
+    expect(read(configPath)).toBe(config);
+  });
+
+  it("asks rather than edits when it already extends other files", () => {
+    const repo = makeRepo("vite8");
+    const configPath = join(repo.root, "lefthook.yml");
+    write(configPath, own + "extends:\n  - shared.yml\n");
+    const plan = applySetup(repo.project);
+    expect(read(configPath)).not.toContain(HOOKS_FILE);
+    expect(
+      plan.entries.some(
+        (e) => e.kind === "keep" && e.text.includes(`Add ${HOOKS_FILE}`),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("GitLab", () => {
   it("only adds include entries to the shared .gitlab-ci.yml", () => {
     const repo = makeRepo("vite8", {
@@ -172,7 +214,7 @@ describe("README", () => {
     expect(readme).toContain("<!-- >>> init-react >>> -->");
   });
 
-  it("overwrites its own block, like the shared git hooks do", () => {
+  it("overwrites its own block, like the shared git hooks file", () => {
     const repo = makeRepo("vite8");
     applySetup(repo.project);
     const path = join(repo.project, "README.md");
@@ -196,7 +238,8 @@ describe("without git", () => {
   it("sets up everything but hooks and CI", () => {
     const repo = makeRepo("vite8", { git: false });
     const plan = applySetup(repo.project);
-    expect(existsSync(join(repo.project, ".husky"))).toBe(false);
+    expect(existsSync(join(repo.project, HOOKS_FILE))).toBe(false);
+    expect(existsSync(join(repo.project, "lefthook.yml"))).toBe(false);
     expect(
       plan.entries.some(
         (e) => e.kind === "warn" && e.text.includes("git init"),
