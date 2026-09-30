@@ -1,6 +1,6 @@
 {
   "name": "@janesenaj42/eslint-config",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "The team's ESLint rules for TypeScript React projects (flat config).",
   "type": "module",
   "main": "./index.js",
