@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.0.0](https://github.com/janesenaj42/init-react/compare/v0.2.0...v1.0.0) (2026-10-07)
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** `--ci` and the `ci` tool name are gone. Projects set up by an earlier
+  release keep their init-react CI files, which the CLI no longer updates.
+* projects that bump to this version fail `lint` wherever their code
+  breaks one of the three rules.
+
+### Features
+
+* add --skip and --registry; enforce no any, 30-line functions, no magic numbers ([#5](https://github.com/janesenaj42/init-react/issues/5)) ([4c02165](https://github.com/janesenaj42/init-react/commit/4c02165cbf699ec3601617e86ecf204d41b52932))
+* **cli:** stop writing CI; pipelines belong to the CI team ([#6](https://github.com/janesenaj42/init-react/issues/6)) ([046a087](https://github.com/janesenaj42/init-react/commit/046a08746938c2349b02250d8f271155aa4d745e))
+
 ## [0.2.0](https://github.com/janesenaj42/init-react/compare/v0.1.2...v0.2.0) (2026-09-30)
 
 ### ⚠ BREAKING CHANGES
