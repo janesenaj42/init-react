@@ -3,14 +3,18 @@ import { readFileSync } from "node:fs";
 // The package scope. `pnpm set-scope <new-scope>` at the repo root rewrites every
 // occurrence, so moving from a personal account to an org is one command.
 export const SCOPE = "@janesenaj42";
-export const REGISTRY = "https://npm.pkg.github.com";
+/**
+ * Where publish.yml publishes the Standard's packages. A Target Project can install them
+ * from elsewhere (an on-prem mirror) with --registry, saved in its package.json.
+ */
+export const DEFAULT_REGISTRY = "https://npm.pkg.github.com";
 
 export const CLI_PACKAGE = `${SCOPE}/init-react`;
 export const ESLINT_CONFIG = `${SCOPE}/eslint-config`;
 export const PRETTIER_CONFIG = `${SCOPE}/prettier-config`;
 export const COMMITLINT_CONFIG = `${SCOPE}/commitlint-config`;
 
-/** Tools the user can name in `--force`. */
+/** Tools the user can name in `--force` and `--skip`. */
 export const TOOLS = [
   "eslint",
   "prettier",

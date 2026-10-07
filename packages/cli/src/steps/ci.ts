@@ -1,11 +1,21 @@
 import { join } from "node:path";
 import YAML, { isMap, isScalar, isSeq } from "yaml";
-import { REGISTRY, SCOPE } from "../constants.js";
+import { SCOPE } from "../constants.js";
 import { isUneditedManagedFile, stamp } from "../managed.js";
 import { reconcileManagedFile, type Plan } from "../plan.js";
 import type { CiProvider, Project } from "../project.js";
+import {
+  isGitHubPackages,
+  registryAuthKey,
+  registryTokenVariable,
+} from "../settings.js";
 
 const NODE_VERSION = "22";
+
+// No host is fixed in a CI file: the runner and the image come from variables the
+// repository or its org/group can set, with these defaults.
+const GITHUB_RUNNER = `\${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}`;
+const GITLAB_IMAGE_VARIABLE = "NODE_IMAGE";
 
 /** The CI Check: the pipeline jobs that actually enforce the Standard on every PR / MR. */
 export function ciStep(
@@ -90,18 +100,22 @@ function githubCi(plan: Plan, project: Project): void {
       ? ""
       : `\n    paths:\n      - "${dir}/**"\n      - ".github/workflows/init-react-${project.slug}.yml"`;
 
+  // GitHub Packages accepts the workflow's own token; any other registry needs a secret.
+  const token = isGitHubPackages(plan.registry)
+    ? "GITHUB_TOKEN"
+    : registryTokenVariable(plan.registry);
   const setupSteps = (workingDir: string) =>
     [
       `      - uses: actions/setup-node@v5`,
       `        with:`,
       `          node-version: ${NODE_VERSION}`,
-      `          registry-url: ${REGISTRY}`,
+      `          registry-url: ${plan.registry}`,
       `          scope: "${SCOPE}"`,
       ...pm.setup.map((cmd) => `      - run: ${cmd}`),
       `      - run: ${pm.install}`,
       `        working-directory: ${workingDir}`,
       `        env:`,
-      `          NODE_AUTH_TOKEN: \${{ secrets.GITHUB_TOKEN }}`,
+      `          NODE_AUTH_TOKEN: \${{ secrets.${token} }}`,
     ].join("\n");
 
   const checks = `name: "init-react checks: ${project.slug}"
@@ -114,7 +128,7 @@ permissions:
   packages: read
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ${GITHUB_RUNNER}
     defaults:
       run:
         working-directory: ${dir}
@@ -129,7 +143,13 @@ ${CHECK_SCRIPTS.map((script) => `      - run: ${pm.run} ${script}`).join("\n")}
     join(workflows, `init-react-${project.slug}.yml`),
     stamp(checks, "#"),
   );
+  if (!isGitHubPackages(plan.registry)) {
+    plan.note(
+      `GitHub: add a repository or organization secret ${token} with a read token for ${plan.registry}, so CI can install the Standard's packages.`,
+    );
+  }
 
+  if (plan.isSkipped("commitlint")) return;
   const commitlintPath = join(workflows, "init-react-commitlint.yml");
   const clDir = commitlintProjectDir(
     plan,
@@ -146,7 +166,7 @@ permissions:
   packages: read
 jobs:
   commitlint:
-    runs-on: ubuntu-latest
+    runs-on: ${GITHUB_RUNNER}
     defaults:
       run:
         working-directory: ${clDir}
@@ -169,18 +189,22 @@ function gitlabCi(plan: Plan, project: Project): void {
   const dir = project.relDir;
   const changes = dir === "." ? "**/*" : `${dir}/**/*`;
 
+  const token = registryTokenVariable(plan.registry);
   const beforeScript = (workingDir: string) =>
     [
       `    - cd "${workingDir}"`,
-      `    # GITHUB_PACKAGES_TOKEN: a GitHub token with read:packages, set as a masked CI/CD variable.`,
-      `    - echo "//npm.pkg.github.com/:_authToken=\${GITHUB_PACKAGES_TOKEN}" >> ~/.npmrc`,
+      `    # ${token}: a read token for ${plan.registry}, set as a masked CI/CD variable.`,
+      `    - echo "${registryAuthKey(plan.registry)}=\${${token}}" >> ~/.npmrc`,
       ...pm.setup.map((cmd) => `    - ${cmd}`),
       `    - ${pm.install}`,
     ].join("\n");
 
   const checksFile = `.gitlab/init-react/${project.slug}.yml`;
   const checks = `"init-react:${project.slug}:checks":
-  image: node:${NODE_VERSION}
+  # A CI/CD variable ${GITLAB_IMAGE_VARIABLE} (e.g. an on-prem registry's mirror) overrides this default.
+  image: $${GITLAB_IMAGE_VARIABLE}
+  variables:
+    ${GITLAB_IMAGE_VARIABLE}: node:${NODE_VERSION}
   stage: test
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -202,13 +226,15 @@ ${CHECK_SCRIPTS.map((script) => `    - ${pm.run} ${script}`).join("\n")}
   const commitlintFile = ".gitlab/init-react/commitlint.yml";
   const commitlintPath = join(folder, "commitlint.yml");
   const clDir = commitlintProjectDir(plan, commitlintPath, /- cd "(.+)"$/m);
-  if (sharedFileMayChange(plan, commitlintPath, clDir)) {
+  const withCommitlint = !plan.isSkipped("commitlint");
+  if (withCommitlint && sharedFileMayChange(plan, commitlintPath, clDir)) {
     const commitlint = `# The Commit Convention covers every commit in the repository, so this runs on every MR.
 "init-react:commitlint":
-  image: node:${NODE_VERSION}
-  stage: test
+  image: $${GITLAB_IMAGE_VARIABLE}
   variables:
+    ${GITLAB_IMAGE_VARIABLE}: node:${NODE_VERSION}
     GIT_DEPTH: 0
+  stage: test
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   before_script:
@@ -221,10 +247,10 @@ ${beforeScript(clDir)}
 
   addGitlabIncludes(plan, join(gitRoot, ".gitlab-ci.yml"), [
     checksFile,
-    commitlintFile,
+    ...(withCommitlint ? [commitlintFile] : []),
   ]);
   plan.note(
-    "GitLab: set a masked CI/CD variable GITHUB_PACKAGES_TOKEN (a GitHub token with read:packages) so CI can install the Standard's packages.",
+    `GitLab: set a masked CI/CD variable ${token} (a read token for ${plan.registry}) so CI can install the Standard's packages.`,
   );
 }
 
