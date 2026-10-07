@@ -1,7 +1,6 @@
 import { CLI_PACKAGE, DEFAULT_REGISTRY, type Tool } from "./constants.js";
 import { Plan } from "./plan.js";
-import { detectProject, type CiProvider } from "./project.js";
-import { ciStep } from "./steps/ci.js";
+import { detectProject } from "./project.js";
 import { commitlintStep } from "./steps/commitlint.js";
 import { eslintStep } from "./steps/eslint.js";
 import { hooksStep, lintStagedStep } from "./steps/hooks.js";
@@ -9,7 +8,7 @@ import { prettierStep } from "./steps/prettier.js";
 import { readmeStep } from "./steps/readme.js";
 import { registryStep, releaseStep } from "./steps/release.js";
 import { resolveRegistry, resolveSkip } from "./settings.js";
-import { runScript } from "./steps/standard.js";
+import { runScript, typecheckStep } from "./steps/standard.js";
 import { run } from "./util.js";
 
 export interface SetupOptions {
@@ -18,7 +17,6 @@ export interface SetupOptions {
   /** --skip; undefined keeps the list saved by an earlier run. */
   skip?: Set<Tool>;
   registry?: string;
-  ci?: CiProvider | "none";
   releaseBranch?: string;
 }
 
@@ -41,7 +39,7 @@ export function planSetup(cwd: string, options: SetupOptions): Plan {
   if (!skip.has("lint-staged")) lintStagedStep(plan);
   if (!skip.has("lefthook")) hooksStep(plan);
   if (!skip.has("release")) releaseStep(plan, options.releaseBranch);
-  if (!skip.has("ci")) ciStep(plan, options.ci);
+  if (!skip.has("typecheck")) typecheckStep(plan);
   readmeStep(plan);
   for (const tool of [...skip].sort()) {
     plan.note(`${tool}: skipped (--skip), so it is left to the repository.`);
@@ -53,7 +51,7 @@ export function setup(cwd: string, options: SetupOptions): number {
   const plan = planSetup(cwd, options);
   const { project } = plan;
   console.log(
-    `${CLI_PACKAGE}: ${project.relDir === "." ? project.dir : project.relDir} (${project.pm}${project.ciProvider ? `, ${project.ciProvider}` : ""})\n`,
+    `${CLI_PACKAGE}: ${project.relDir === "." ? project.dir : project.relDir} (${project.pm})\n`,
   );
   printPlan(plan);
 

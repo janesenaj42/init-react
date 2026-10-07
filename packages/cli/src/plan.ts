@@ -290,7 +290,7 @@ export class Plan {
   }
 }
 
-/** Reconciles a file the CLI owns outright (CI jobs, .prettierignore): write unless Existing Config. */
+/** Reconciles a file the CLI owns outright (e.g. .prettierignore): write unless Existing Config. */
 export function reconcileManagedFile(
   plan: Plan,
   tool: Tool,

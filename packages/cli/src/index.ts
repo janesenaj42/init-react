@@ -25,7 +25,6 @@ Options:
                                 later runs skip them too. --skip=none clears it.
   --registry=<url>              Install the Standard's packages from this registry (e.g. an
                                 on-prem mirror); saved. Default: ${DEFAULT_REGISTRY}
-  --ci=github|gitlab|none       Override the CI provider detected from the origin remote
   --release-branch=<branch>     The branch full Releases are made from (default: main)
   -h, --help                    Show this help
   -v, --version                 Show the version
@@ -40,7 +39,6 @@ function main(argv: string[]): number {
       force: { type: "string" },
       skip: { type: "string" },
       registry: { type: "string" },
-      ci: { type: "string" },
       "release-branch": { type: "string" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
@@ -67,10 +65,6 @@ function main(argv: string[]): number {
   if (command !== undefined)
     throw new UserError(`Unknown command "${command}".\n\n${HELP}`);
 
-  const ci = values.ci;
-  if (ci !== undefined && ci !== "github" && ci !== "gitlab" && ci !== "none") {
-    throw new UserError(`--ci must be github, gitlab or none.`);
-  }
   const force = parseTools("force", values.force);
   const skip =
     values.skip === undefined
@@ -89,7 +83,6 @@ function main(argv: string[]): number {
     force,
     skip,
     registry: values.registry,
-    ci,
     releaseBranch: values["release-branch"],
   });
 }

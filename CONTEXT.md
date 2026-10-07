@@ -49,9 +49,6 @@ A Release marked as not final. The only kind of Release allowed off the Release 
 - **Release Candidate (rc)**: believed ready to ship; only bug fixes from here. If nothing is found, it becomes the full Release unchanged.
   _Avoid_: pre-release build, snapshot
 
-**CI Check**:
-The pipeline job on every merge request or pull request that enforces the Commit Convention and the Standard. Local hooks give fast feedback; the CI Check is what actually enforces the rules.
-
 **Shared Config Package**:
 A published package that holds part of the Standard (e.g. the ESLint rules, the Prettier rules). Target Projects extend it rather than holding their own copy of the rules.
 _Avoid_: preset, template
@@ -67,7 +64,7 @@ A run that reports what Reconcile would change without changing anything.
 
 - The CLI applies the **Standard** to a **Target Project** by **Reconciling** it with any **Existing Config**
 - Git hooks belong to the repository, not to a **Target Project**; several **Target Projects** in one repository share them
-- The **Commit Convention** is enforced repo-wide without asking; the **CI Check** is the real enforcement, since local hooks can be skipped
+- The **Commit Convention** is enforced repo-wide without asking, by the git hooks; pipelines belong to the CI team, not the CLI
 - **Existing Config** wins over the **Standard** unless the user chooses **Force** for that tool
 - A **Scaffold Default** is never **Existing Config**; an unedited **Managed File** is never **Existing Config**
 - The **Standard** is delivered through **Shared Config Packages**; changing the rules means releasing a new version of a package, not editing Target Projects

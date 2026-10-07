@@ -1,12 +1,12 @@
 # init-react
 
 One command that sets up a TypeScript React project with the team's ESLint, Prettier, commit
-convention, git hooks, CI check and release scripts.
+convention, git hooks, `typecheck` script and release scripts. CI is not set up: the CI team
+owns pipelines, and runs `lint`, `format:check` and `typecheck` from the project.
 
 - [For project teams: set up your project](#for-project-teams-set-up-your-project)
   - [Once per machine](#once-per-machine)
   - [Set up a project](#set-up-a-project)
-  - [CI token](#ci-token)
 - [For maintainers of this repo: change the CLI or the rules](#for-maintainers-of-this-repo-change-the-cli-or-the-rules)
   - [Build and test](#build-and-test)
   - [Try it on a project before publishing](#try-it-on-a-project-before-publishing)
@@ -48,22 +48,9 @@ README, in the `## Scripts` block it writes.
 | `--force[=tools]`           | Replace your own config with the Standard's, for all tools or the ones named |
 | `--skip=<tools>`            | Don't set these tools up; remembered by later runs. `--skip=none` clears it  |
 | `--registry=<url>`          | Install the Standard's packages from this registry; remembered               |
-| `--ci=github\|gitlab\|none` | CI provider, when it can't be told from the `origin` remote                  |
 | `--release-branch=<branch>` | Branch full releases come from (default `main`); remembered                  |
 
-Tools: `eslint`, `prettier`, `commitlint`, `lint-staged`, `lefthook`, `ci`, `release`.
-
-### CI token
-
-| CI     | Registry        | Set                                                                                            |
-| ------ | --------------- | ---------------------------------------------------------------------------------------------- |
-| GitHub | GitHub Packages | Nothing; in each package's settings, _Manage Actions access_ → give the repository read access |
-| GitHub | Other           | Secret `NPM_REGISTRY_TOKEN`                                                                    |
-| GitLab | GitHub Packages | Masked variable `GITHUB_PACKAGES_TOKEN` (GitHub token with `read:packages`)                    |
-| GitLab | Other           | Masked variable `NPM_REGISTRY_TOKEN`                                                           |
-
-Optional: `CI_RUNS_ON` (GitHub variable, JSON, e.g. `["self-hosted"]`) picks the runner;
-`NODE_IMAGE` (GitLab variable) replaces the `node:22` image.
+Tools: `eslint`, `prettier`, `commitlint`, `lint-staged`, `lefthook`, `typecheck`, `release`.
 
 ## For maintainers of this repo: change the CLI or the rules
 

@@ -3,7 +3,6 @@ import { basename, dirname, join, relative } from "node:path";
 import { capture, toPosix, UserError } from "./util.js";
 
 export type PackageManager = "npm" | "pnpm" | "yarn";
-export type CiProvider = "github" | "gitlab";
 
 export interface PackageJson {
   name?: string;
@@ -34,7 +33,6 @@ export interface Project {
   esm: boolean;
   /** Whether tsconfig.json uses project references (Vite does), so typecheck needs `tsc -b`. */
   tsProjectReferences: boolean;
-  ciProvider: CiProvider | null;
 }
 
 export function detectProject(dir: string): Project {
@@ -77,10 +75,6 @@ export function detectProject(dir: string): Project {
     (existsSync(join(lockDir, ".yarnrc.yml")) ||
       (pmVersion !== null && !pmVersion.startsWith("1.")));
 
-  const origin = gitRoot
-    ? capture("git", ["remote", "get-url", "origin"], dir)
-    : null;
-
   return {
     dir,
     pkg,
@@ -95,15 +89,7 @@ export function detectProject(dir: string): Project {
     tsProjectReferences: existsSync(tsconfigPath)
       ? /"references"\s*:/.test(readFileSync(tsconfigPath, "utf8"))
       : false,
-    ciProvider: ciProviderFromRemote(origin),
   };
-}
-
-export function ciProviderFromRemote(url: string | null): CiProvider | null {
-  if (!url) return null;
-  if (/github\.com[:/]/i.test(url)) return "github";
-  if (/gitlab/i.test(url)) return "gitlab";
-  return null;
 }
 
 function detectPackageManager(

@@ -61,15 +61,9 @@ export function isGitHubPackages(registry: string): boolean {
   return new URL(registry).hostname === "npm.pkg.github.com";
 }
 
-/** The CI variable holding the token for the registry. */
+/** The environment variable a Yarn Berry config reads the registry token from. */
 export function registryTokenVariable(registry: string): string {
   return isGitHubPackages(registry)
     ? "GITHUB_PACKAGES_TOKEN"
     : "NPM_REGISTRY_TOKEN";
-}
-
-/** The .npmrc key an auth token for the registry goes under: //host/path/:_authToken */
-export function registryAuthKey(registry: string): string {
-  const url = new URL(registry);
-  return `//${url.host}${url.pathname.replace(/\/*$/, "/")}:_authToken`;
 }
