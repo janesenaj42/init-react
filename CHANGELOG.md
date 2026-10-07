@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.0.2](https://github.com/janesenaj42/init-react/compare/v1.0.1...v1.0.2) (2026-10-07)
+
+### Bug Fixes
+
+* **cli:** keep a project's ESLint with its config, warn on version mismatch; lint-staged follows --skip ([#7](https://github.com/janesenaj42/init-react/issues/7)) ([051504e](https://github.com/janesenaj42/init-react/commit/051504e1454c68ba369bf61a4c76e76461caca2a))
+
 ## [1.0.1](https://github.com/janesenaj42/init-react/compare/v1.0.0...v1.0.1) (2026-10-07)
 
 ## [1.0.0](https://github.com/janesenaj42/init-react/compare/v0.2.0...v1.0.0) (2026-10-07)
