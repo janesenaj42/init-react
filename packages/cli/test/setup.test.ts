@@ -321,3 +321,55 @@ describe("--registry", () => {
     ).toThrow(UserError);
   });
 });
+
+describe("a project keeping its own ESLint", () => {
+  const LEGACY_CONFIG = '{ "root": true, "extends": ["airbnb"] }\n';
+
+  it("keeps its ESLint version under a kept .eslintrc", () => {
+    const repo = makeRepo("vite8");
+    const pkgPath = join(repo.project, "package.json");
+    const pkg = readJson(pkgPath);
+    pkg.devDependencies.eslint = "^8.57.1";
+    write(pkgPath, JSON.stringify(pkg, null, 2));
+    write(join(repo.project, ".eslintrc.json"), LEGACY_CONFIG);
+
+    const plan = applySetup(repo.project);
+    const after = readJson(pkgPath);
+    expect(after.devDependencies.eslint).toBe("^8.57.1");
+    expect(after.devDependencies["@janesenaj42/eslint-config"]).toBeUndefined();
+    expect(read(join(repo.project, ".eslintrc.json"))).toBe(LEGACY_CONFIG);
+    expect(
+      plan.entries.some(
+        (e) => e.kind === "note" && e.text.includes("ESLint version are kept"),
+      ),
+    ).toBe(true);
+    // Its own ESLint still lints staged files.
+    expect(after["lint-staged"]["*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"]).toContain(
+      "eslint --fix",
+    );
+  });
+
+  it("runs no ESLint from lint-staged when eslint is skipped", () => {
+    const repo = makeRepo("vite8");
+    applySetup(repo.project, { skip: ["eslint"] });
+    const pkg = readJson(join(repo.project, "package.json"));
+    expect(pkg["lint-staged"]).toEqual({
+      "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}": ["prettier --write"],
+      "*.{json,md,css,scss,html,yml,yaml}": ["prettier --write"],
+    });
+    expect(pkg.devDependencies["@janesenaj42/eslint-config"]).toBeUndefined();
+  });
+
+  it("writes no lint-staged config with eslint and prettier both skipped", () => {
+    const repo = makeRepo("vite8");
+    const plan = applySetup(repo.project, { skip: ["eslint", "prettier"] });
+    expect(readJson(join(repo.project, "package.json"))["lint-staged"]).toBe(
+      undefined,
+    );
+    expect(
+      plan.entries.some(
+        (e) => e.kind === "warn" && e.text.includes("lint-staged"),
+      ),
+    ).toBe(true);
+  });
+});

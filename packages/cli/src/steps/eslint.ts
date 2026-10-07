@@ -46,10 +46,17 @@ export function eslintStep(plan: Plan): void {
     snippet: `import standard from "${ESLINT_CONFIG}";\n// ...then spread \`...standard\` first in your exported config array`,
   });
 
+  // A kept config is linted by the project's own ESLint: upgrading ESLint under it would
+  // break it (ESLint 10 no longer reads .eslintrc files).
+  if (outcome === "kept") {
+    plan.note(
+      `ESLint: your own config and ESLint version are kept. To use the Standard, install ${ESLINT_CONFIG} and eslint ${THIRD_PARTY_RANGES.eslint} (flat config only), or re-run with --force=eslint.`,
+    );
+    return;
+  }
+
   plan.ensureDevDependency("eslint", THIRD_PARTY_RANGES.eslint);
   plan.ensureDevDependency(ESLINT_CONFIG, sharedPackageRange(ESLINT_CONFIG));
-
-  if (outcome === "kept") return;
 
   if (replacedScaffold) {
     // The Standard's package brings these; Vite's copies would only drift.
