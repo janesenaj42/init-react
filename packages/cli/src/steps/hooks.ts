@@ -83,10 +83,14 @@ export function hooksStep(plan: Plan): void {
   plan.setScript("lefthook", "prepare", "lefthook install");
 
   const hooksPath = join(gitRoot, HOOKS_FILE);
-  const projects = [
-    ...new Set([...projectsIn(plan.read(hooksPath)), relDir]),
-  ].sort();
-  const hooks = hooksFile(projects);
+  const current = plan.read(hooksPath);
+  const projects = [...new Set([...projectsIn(current), relDir])].sort();
+  // Each project's own --skip decides which of its hooks run.
+  const skips = skipsIn(current);
+  const own = HOOK_TOOLS.filter((tool) => plan.isSkipped(tool));
+  if (own.length > 0) skips[relDir] = own;
+  else delete skips[relDir];
+  const hooks = hooksFile(projects, skips);
   if (plan.read(hooksPath) !== hooks) plan.write(hooksPath, hooks);
   extendRepoConfig(plan, gitRoot);
 
@@ -144,14 +148,29 @@ function extendRepoConfig(plan: Plan, gitRoot: string): void {
   if (next !== current) plan.write(path, next);
 }
 
+/** The tools a project's hooks run; a project that skips one gets no job for it. */
+const HOOK_TOOLS = ["lint-staged", "commitlint"] as const;
+type HookTool = (typeof HOOK_TOOLS)[number];
+type Skips = Record<string, HookTool[]>;
+
 function projectsIn(hooks: string | null): string[] {
   const line = hooks && /^# projects: (.*)$/m.exec(hooks)?.[1];
   return line ? (JSON.parse(line) as string[]) : [];
 }
 
-function hooksFile(dirs: string[]): string {
-  const hooks = {
-    "pre-commit": {
+function skipsIn(hooks: string | null): Skips {
+  const line = hooks && /^# skip: (.*)$/m.exec(hooks)?.[1];
+  return line ? (JSON.parse(line) as Skips) : {};
+}
+
+function hooksFile(projects: string[], skips: Skips): string {
+  const using = (tool: HookTool) =>
+    projects.filter((dir) => !skips[dir]?.includes(tool));
+  const lintStaged = using("lint-staged");
+  const commitlint = using("commitlint");
+  const hooks: Record<string, unknown> = {};
+  if (lintStaged.length > 0) {
+    hooks["pre-commit"] = {
       jobs: [
         {
           name: "init-react",
@@ -159,7 +178,7 @@ function hooksFile(dirs: string[]): string {
           // the working tree, so two at once would trip over each other.
           group: {
             piped: true,
-            jobs: dirs.map((dir) => ({
+            jobs: lintStaged.map((dir) => ({
               name: `lint-staged ${dir}`,
               // lefthook skips a project with nothing staged under its root,
               // so commits elsewhere (e.g. a Java backend) need no Node.
@@ -169,8 +188,10 @@ function hooksFile(dirs: string[]): string {
           },
         },
       ],
-    },
-    "commit-msg": {
+    };
+  }
+  if (commitlint.length > 0) {
+    hooks["commit-msg"] = {
       jobs: [
         {
           name: "init-react commitlint",
@@ -179,18 +200,21 @@ function hooksFile(dirs: string[]): string {
           // file itself, worktrees included. One line: lefthook on Windows breaks
           // multi-line scripts.
           run:
-            `for dir in ${dirs.map((d) => `"${d}"`).join(" ")}; do ` +
+            `for dir in ${commitlint.map((d) => `"${d}"`).join(" ")}; do ` +
             `if [ -e "$dir/node_modules/.bin/commitlint" ]; then ` +
             `exec "$dir/node_modules/.bin/commitlint" --cwd "$dir" --edit; fi; done`,
         },
       ],
-    },
-  };
+    };
+  }
   return (
     `# Written by init-react; edits are overwritten. Git hooks shared by every Target\n` +
     `# Project in this repository, extended by the repository's own lefthook config.\n` +
     `# The Commit Convention applies to every commit.\n` +
-    `# projects: ${JSON.stringify(dirs)}\n` +
-    stringify(hooks, { lineWidth: 0 })
+    `# projects: ${JSON.stringify(projects)}\n` +
+    (Object.keys(skips).length > 0
+      ? `# skip: ${JSON.stringify(Object.fromEntries(Object.entries(skips).sort()))}\n`
+      : "") +
+    (Object.keys(hooks).length > 0 ? stringify(hooks, { lineWidth: 0 }) : "")
   );
 }

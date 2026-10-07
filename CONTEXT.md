@@ -56,6 +56,10 @@ The pipeline job on every merge request or pull request that enforces the Commit
 A published package that holds part of the Standard (e.g. the ESLint rules, the Prettier rules). Target Projects extend it rather than holding their own copy of the rules.
 _Avoid_: preset, template
 
+**Skip**:
+An explicit user choice to leave a tool to something else, given per tool (e.g. commitlint, when the repository sets up its Commit Convention itself). The CLI then writes nothing for that tool, and keeps skipping it on later runs.
+_Avoid_: exclude, disable
+
 **Dry Run**:
 A run that reports what Reconcile would change without changing anything.
 

@@ -1,6 +1,7 @@
 import { basename, join } from "node:path";
-import { CLI_PACKAGE, REGISTRY, SCOPE } from "../constants.js";
+import { CLI_PACKAGE, SCOPE } from "../constants.js";
 import type { Plan } from "../plan.js";
+import { registryTokenVariable } from "../settings.js";
 import { sharedPackageRange } from "./standard.js";
 
 export const FULL_RELEASES = ["patch", "minor", "major"] as const;
@@ -20,14 +21,18 @@ export function releaseStep(
 ): void {
   const { relDir, dir } = plan.project;
   const current = (plan.pkg["init-react"] ?? {}) as Partial<ReleaseSettings>;
+  // Each setting on its own, so other settings saved beside them (--skip, --registry)
+  // don't make the whole "init-react" object look like Existing Config.
+  plan.setSetting(
+    "releaseBranch",
+    releaseBranchFlag ?? current.releaseBranch ?? "main",
+  );
   // Each Target Project releases independently; in a shared repository its tags
   // carry its folder name so they never collide with another project's.
-  const settings: ReleaseSettings = {
-    releaseBranch: releaseBranchFlag ?? current.releaseBranch ?? "main",
-    tagPrefix:
-      current.tagPrefix ?? (relDir === "." ? "v" : `${basename(dir)}@`),
-  };
-  plan.setPkgValue("release", ["init-react"], { ...current, ...settings });
+  plan.setSetting(
+    "tagPrefix",
+    current.tagPrefix ?? (relDir === "." ? "v" : `${basename(dir)}@`),
+  );
 
   plan.ensureDevDependency(CLI_PACKAGE, sharedPackageRange(CLI_PACKAGE));
   for (const type of [...FULL_RELEASES, ...PRERELEASES]) {
@@ -35,24 +40,26 @@ export function releaseStep(
   }
 }
 
-/** Points the Standard's scope at GitHub Packages so its packages install. */
+/**
+ * Points the Standard's scope at the project's registry (settings.ts, resolveRegistry) so
+ * its packages install. Only the registry goes in the project's .npmrc; a token never does.
+ */
 export function registryStep(plan: Plan): void {
-  const line = `${SCOPE}:registry=${REGISTRY}`;
+  const { registry } = plan;
+  const line = `${SCOPE}:registry=${registry}`;
   if (plan.project.yarnBerry) {
     plan.warn(
-      `Yarn Berry does not read .npmrc. Add to .yarnrc.yml:\n      npmScopes:\n        ${SCOPE.slice(1)}:\n          npmRegistryServer: "${REGISTRY}"\n          npmAuthToken: "\${GITHUB_PACKAGES_TOKEN-}"`,
+      `Yarn Berry does not read .npmrc. Add to .yarnrc.yml:\n      npmScopes:\n        ${SCOPE.slice(1)}:\n          npmRegistryServer: "${registry}"\n          npmAuthToken: "\${${registryTokenVariable(registry)}-}"`,
     );
     return;
   }
   const path = join(plan.project.dir, ".npmrc");
   const current = plan.read(path) ?? "";
-  const existing = new RegExp(`^${SCOPE}:registry=(.*)$`, "m").exec(current);
-  if (existing?.[1]?.trim() === REGISTRY) return;
+  const pattern = new RegExp(`^${SCOPE}:registry=(.*)$`, "m");
+  const existing = pattern.exec(current);
+  if (existing?.[1]?.trim().replace(/\/+$/, "") === registry) return;
   if (existing) {
-    plan.log(
-      "keep",
-      `.npmrc points ${SCOPE} at ${existing[1]}; the Standard's packages are published to ${REGISTRY}.`,
-    );
+    plan.write(path, current.replace(pattern, line), `${SCOPE} registry`);
     return;
   }
   plan.write(

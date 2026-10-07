@@ -1,5 +1,11 @@
 import { parseArgs } from "node:util";
-import { CLI_PACKAGE, OWN_VERSION, TOOLS, type Tool } from "./constants.js";
+import {
+  CLI_PACKAGE,
+  DEFAULT_REGISTRY,
+  OWN_VERSION,
+  TOOLS,
+  type Tool,
+} from "./constants.js";
 import { release } from "./release.js";
 import { setup } from "./setup.js";
 import { UserError } from "./util.js";
@@ -14,6 +20,11 @@ Options:
   --dry-run                     Show what would change without changing anything
   --force[=tools]               Let the Standard replace your own config, for all tools or
                                 only some: ${TOOLS.join(",")}
+  --skip=<tools>                Leave these tools to something else (e.g. commitlint, when the
+                                repository sets up its Commit Convention itself); saved, so
+                                later runs skip them too. --skip=none clears it.
+  --registry=<url>              Install the Standard's packages from this registry (e.g. an
+                                on-prem mirror); saved. Default: ${DEFAULT_REGISTRY}
   --ci=github|gitlab|none       Override the CI provider detected from the origin remote
   --release-branch=<branch>     The branch full Releases are made from (default: main)
   -h, --help                    Show this help
@@ -27,6 +38,8 @@ function main(argv: string[]): number {
     options: {
       "dry-run": { type: "boolean", default: false },
       force: { type: "string" },
+      skip: { type: "string" },
+      registry: { type: "string" },
       ci: { type: "string" },
       "release-branch": { type: "string" },
       help: { type: "boolean", short: "h" },
@@ -58,24 +71,42 @@ function main(argv: string[]): number {
   if (ci !== undefined && ci !== "github" && ci !== "gitlab" && ci !== "none") {
     throw new UserError(`--ci must be github, gitlab or none.`);
   }
+  const force = parseTools("force", values.force);
+  const skip =
+    values.skip === undefined
+      ? undefined
+      : values.skip === "none"
+        ? new Set<Tool>()
+        : parseTools("skip", values.skip);
+  const both = [...(skip ?? [])].filter((tool) => force.has(tool));
+  if (both.length > 0) {
+    throw new UserError(
+      `${both.join(", ")} can't be in both --force and --skip.`,
+    );
+  }
   return setup(process.cwd(), {
     dryRun: values["dry-run"],
-    force: parseForce(values.force),
+    force,
+    skip,
+    registry: values.registry,
     ci,
     releaseBranch: values["release-branch"],
   });
 }
 
-function parseForce(value: string | undefined): Set<Tool> {
+function parseTools(flag: string, value: string | undefined): Set<Tool> {
   if (value === undefined) return new Set();
-  if (value === "" || value === "all") return new Set(TOOLS);
+  if (value === "" || value === "all") {
+    if (flag === "skip") throw new UserError("--skip needs a list of tools.");
+    return new Set(TOOLS);
+  }
   const tools = value.split(",").map((t) => t.trim());
   const unknown = tools.filter(
     (t) => !(TOOLS as readonly string[]).includes(t),
   );
   if (unknown.length > 0) {
     throw new UserError(
-      `Unknown tool in --force: ${unknown.join(", ")}. Use: ${TOOLS.join(", ")}.`,
+      `Unknown tool in --${flag}: ${unknown.join(", ")}. Use: ${TOOLS.join(", ")}.`,
     );
   }
   return new Set(tools as Tool[]);

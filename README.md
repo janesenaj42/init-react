@@ -18,12 +18,14 @@ This README has two parts:
 
 ### One-time setup (every developer)
 
-The packages are on GitHub Packages, which needs a login even to install. Create a GitHub token (classic) with `read:packages`, then add it to your user `~/.npmrc`:
+The packages are published to GitHub Packages, which needs a login even to install. Create a GitHub token (classic) with `read:packages`, then add it to your user `~/.npmrc`:
 
 ```ini
 //npm.pkg.github.com/:_authToken=YOUR_TOKEN
 @janesenaj42:registry=https://npm.pkg.github.com
 ```
+
+If your team installs from another registry (e.g. an on-prem Nexus or Artifactory that mirrors GitHub Packages), use its URL and token instead, and run the CLI with `--registry=<that URL>`.
 
 ### Using it in a project
 
@@ -42,7 +44,7 @@ What it does:
   - lefthook needs git 2.31 or later, and can't install while another tool (such as husky) has set git's `core.hooksPath`; the CLI warns about both.
 - **CI Check**: GitHub or GitLab, detected from the `origin` remote. It runs lint, format check and typecheck when the project changes, and commitlint on every PR/MR. On GitLab, only `include:` lines are added to your root `.gitlab-ci.yml`.
 - **Release scripts**: see below.
-- **`.npmrc`**: points `@janesenaj42` at GitHub Packages.
+- **`.npmrc`**: points `@janesenaj42` at the registry: GitHub Packages, or the one given with `--registry` (or already in the project's `.npmrc`). Saved in `package.json` under `"init-react"`. A token never goes in this file.
 - **README**: adds a `## Scripts` section to the Target Project's own `README.md`, listing whichever of the scripts above ended up in `package.json` and how to run them with your package manager. It's a Managed Block: edits inside it are overwritten the next time the CLI runs, so the team always has one place to look, instead of needing to know this repo's docs.
 
 Afterwards, run `npm run format` once so existing code matches the Standard, and commit.
@@ -62,17 +64,25 @@ Files the CLI writes start with a `Managed by …` line. Re-running a newer vers
 
 #### Options
 
-| Option                      | Meaning                                                         |
-| --------------------------- | --------------------------------------------------------------- |
-| `--dry-run`                 | Show what would change; change nothing                          |
-| `--force[=tools]`           | Let the Standard replace your own config                        |
-| `--ci=github\|gitlab\|none` | Override the CI provider detected from `origin`                 |
-| `--release-branch=<branch>` | The branch full releases come from (default `main`; e.g. `dev`) |
+| Option                      | Meaning                                                                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`                 | Show what would change; change nothing                                                                                                                                              |
+| `--force[=tools]`           | Let the Standard replace your own config                                                                                                                                            |
+| `--skip=<tools>`            | Leave these tools to something else, e.g. `--skip=commitlint` when the repository sets up its Commit Convention itself. Saved, so later runs skip them too; `--skip=none` clears it |
+| `--registry=<url>`          | Install the Standard's packages from this registry (e.g. an on-prem mirror). Saved                                                                                                  |
+| `--ci=github\|gitlab\|none` | Override the CI provider detected from `origin`                                                                                                                                     |
+| `--release-branch=<branch>` | The branch full releases come from (default `main`; e.g. `dev`). Saved                                                                                                              |
 
 #### CI access to the packages
 
-- **GitHub:** the workflow installs with the built-in `GITHUB_TOKEN`. In each package's settings on GitHub (_Package settings → Manage Actions access_), give the project's repository read access.
-- **GitLab:** add a masked CI/CD variable `GITHUB_PACKAGES_TOKEN`, a GitHub token with `read:packages`.
+| CI     | Registry        | Token                                                                                                                                                     |
+| ------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub | GitHub Packages | The built-in `GITHUB_TOKEN`. In each package's settings on GitHub (_Package settings → Manage Actions access_), give the project's repository read access |
+| GitHub | Any other       | A repository or organization secret `NPM_REGISTRY_TOKEN`, a read token for that registry                                                                  |
+| GitLab | GitHub Packages | A masked CI/CD variable `GITHUB_PACKAGES_TOKEN`, a GitHub token with `read:packages`                                                                      |
+| GitLab | Any other       | A masked CI/CD variable `NPM_REGISTRY_TOKEN`, a read token for that registry                                                                              |
+
+No host is fixed in the CI files either. On GitHub, a repository or organization variable `CI_RUNS_ON` picks the runner, as JSON (default `"ubuntu-latest"`; e.g. `["self-hosted", "linux"]`). On GitLab, a CI/CD variable `NODE_IMAGE` replaces the default image `node:22`, e.g. with an on-prem registry's mirror.
 
 ### Releasing a project
 

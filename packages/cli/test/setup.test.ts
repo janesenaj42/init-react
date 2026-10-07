@@ -273,3 +273,112 @@ describe("Release guards", () => {
     expect(() => release("hotfix", ".")).toThrow(/Unknown release type/);
   });
 });
+
+describe("--skip", () => {
+  it("leaves commitlint to the repository, and remembers it", () => {
+    const repo = makeRepo("vite8", { relDir: "web" });
+    applySetup(repo.project, { skip: ["commitlint"] });
+
+    const pkg = readJson(join(repo.project, "package.json"));
+    expect(pkg["init-react"]).toEqual({
+      skip: ["commitlint"],
+      releaseBranch: "main",
+      tagPrefix: "web@",
+    });
+    expect(existsSync(join(repo.project, "commitlint.config.js"))).toBe(false);
+    expect(pkg.devDependencies["@commitlint/cli"]).toBeUndefined();
+    const hooks = parse(read(join(repo.root, HOOKS_FILE)));
+    expect(hooks["commit-msg"]).toBeUndefined();
+    expect(hooks["pre-commit"]).toBeDefined();
+    expect(
+      existsSync(
+        join(repo.root, ".github/workflows/init-react-commitlint.yml"),
+      ),
+    ).toBe(false);
+
+    // A later run without --skip keeps skipping it.
+    const again = planSetup(repo.project, { dryRun: true, force: new Set() });
+    expect(again.hasChanges).toBe(false);
+  });
+
+  it("is cleared with an empty list (--skip=none)", () => {
+    const repo = makeRepo("vite8");
+    applySetup(repo.project, { skip: ["commitlint"] });
+    applySetup(repo.project, { skip: [] });
+    const pkg = readJson(join(repo.project, "package.json"));
+    expect(pkg["init-react"].skip).toBeUndefined();
+    expect(existsSync(join(repo.project, "commitlint.config.js"))).toBe(true);
+  });
+
+  it("keeps the other projects' hooks in a shared repository", () => {
+    const repo = makeRepo("vite8", { relDir: "web" });
+    const admin = addProject(repo.root, "vite8", "admin");
+    applySetup(repo.project, { skip: ["commitlint"] });
+    applySetup(admin);
+    const hooks = read(join(repo.root, HOOKS_FILE));
+    expect(hooks).toContain('# skip: {"web":["commitlint"]}');
+    expect(hooks).toMatch(/for dir in "admin"; do/);
+    expect(hooks).toContain("lint-staged web");
+    expect(hooks).toContain("lint-staged admin");
+  });
+});
+
+describe("--registry", () => {
+  const MIRROR = "https://nexus.acme.internal/repository/npm-group";
+
+  it("installs from a mirror and points CI at it, with its own token", () => {
+    const repo = makeRepo("vite8", { relDir: "web" });
+    applySetup(repo.project, { registry: `${MIRROR}/` });
+
+    const pkg = readJson(join(repo.project, "package.json"));
+    expect(pkg["init-react"].registry).toBe(MIRROR);
+    expect(read(join(repo.project, ".npmrc"))).toContain(
+      `@janesenaj42:registry=${MIRROR}`,
+    );
+    const workflow = read(
+      join(repo.root, ".github/workflows/init-react-web.yml"),
+    );
+    expect(workflow).toContain(`registry-url: ${MIRROR}`);
+    expect(workflow).toContain("secrets.NPM_REGISTRY_TOKEN");
+    expect(workflow).not.toContain("npm.pkg.github.com");
+
+    const again = planSetup(repo.project, { dryRun: true, force: new Set() });
+    expect(again.hasChanges).toBe(false);
+  });
+
+  it("takes the registry from the project's own .npmrc", () => {
+    const repo = makeRepo("vite8");
+    write(join(repo.project, ".npmrc"), `@janesenaj42:registry=${MIRROR}\n`);
+    applySetup(repo.project);
+    const pkg = readJson(join(repo.project, "package.json"));
+    expect(pkg["init-react"].registry).toBe(MIRROR);
+    expect(read(join(repo.project, ".npmrc"))).toBe(
+      `@janesenaj42:registry=${MIRROR}\n`,
+    );
+  });
+
+  it("writes the mirror's auth key in GitLab CI", () => {
+    const repo = makeRepo("vite8", {
+      relDir: "web",
+      origin: "git@gitlab.acme.internal:team/app.git",
+    });
+    applySetup(repo.project, { registry: MIRROR });
+    const job = read(join(repo.root, ".gitlab/init-react/web.yml"));
+    expect(job).toContain(
+      '"//nexus.acme.internal/repository/npm-group/:_authToken=${NPM_REGISTRY_TOKEN}"',
+    );
+    expect(job).toContain("image: $NODE_IMAGE");
+    expect(job).not.toContain("npm.pkg.github.com");
+  });
+
+  it("rejects something that isn't a URL", () => {
+    const repo = makeRepo("vite8");
+    expect(() =>
+      planSetup(repo.project, {
+        dryRun: true,
+        force: new Set(),
+        registry: "nexus",
+      }),
+    ).toThrow(UserError);
+  });
+});

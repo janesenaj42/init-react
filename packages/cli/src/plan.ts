@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import semver from "semver";
-import { type Tool } from "./constants.js";
+import { DEFAULT_REGISTRY, type Tool } from "./constants.js";
 import { isScaffoldDefault } from "./fingerprints.js";
 import { isUneditedManagedFile } from "./managed.js";
 import type { PackageJson, Project } from "./project.js";
@@ -28,6 +28,9 @@ export class Plan {
   constructor(
     readonly project: Project,
     private readonly forced: ReadonlySet<Tool>,
+    private readonly skipped: ReadonlySet<Tool> = new Set(),
+    /** Where the Standard's packages install from (settings.ts, resolveRegistry). */
+    readonly registry: string = DEFAULT_REGISTRY,
   ) {
     this.pkg = structuredClone(project.pkg);
     this.originalPkg = JSON.stringify(project.pkg);
@@ -35,6 +38,33 @@ export class Plan {
 
   isForced(tool: Tool): boolean {
     return this.forced.has(tool);
+  }
+
+  /** A tool left to something else (--skip): its step doesn't run. */
+  isSkipped(tool: Tool): boolean {
+    return this.skipped.has(tool);
+  }
+
+  /**
+   * Saves one of the project's own settings (package.json "init-react"). Unlike
+   * setPkgValue, the value always comes from the user (a flag), so it replaces the old one;
+   * undefined removes it.
+   */
+  setSetting(key: string, value: unknown): void {
+    const settings = (this.pkg["init-react"] ?? {}) as Record<string, unknown>;
+    if (deepEqual(settings[key], value)) return;
+    const next = { ...settings };
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+    this.pkg["init-react"] = next;
+    this.log(
+      value === undefined
+        ? "delete"
+        : settings[key] === undefined
+          ? "create"
+          : "update",
+      `package.json init-react.${key}${value === undefined ? "" : ` ${JSON.stringify(value)}`}`,
+    );
   }
 
   /** The file's content as this plan would leave it. */
