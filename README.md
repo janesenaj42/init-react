@@ -3,6 +3,15 @@
 One command that sets up a TypeScript React project with the team's ESLint, Prettier, commit
 convention, git hooks, CI check and release scripts.
 
+- [For project teams: set up your project](#for-project-teams-set-up-your-project)
+  - [Once per machine](#once-per-machine)
+  - [Set up a project](#set-up-a-project)
+  - [CI token](#ci-token)
+- [For maintainers of this repo: change the CLI or the rules](#for-maintainers-of-this-repo-change-the-cli-or-the-rules)
+  - [Build and test](#build-and-test)
+  - [Try it on a project before publishing](#try-it-on-a-project-before-publishing)
+  - [Publish a new version](#publish-a-new-version)
+
 ## For project teams: set up your project
 
 ### Once per machine
