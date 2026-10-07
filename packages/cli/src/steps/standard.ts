@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { OWN_VERSION } from "../constants.js";
+import type { Plan } from "../plan.js";
 import type { Project } from "../project.js";
 
 /**
@@ -24,6 +25,15 @@ export function sharedPackageRange(name: string): string {
       return `file:${resolve(join(dir, tarball)).replace(/\\/g, "/")}`;
   }
   return `^${OWN_VERSION}`;
+}
+
+/** A `typecheck` script, for developers and for the CI team's pipeline. */
+export function typecheckStep(plan: Plan): void {
+  plan.setScript(
+    "typecheck",
+    "typecheck",
+    plan.project.tsProjectReferences ? "tsc -b" : "tsc --noEmit",
+  );
 }
 
 /** Config files use `.js` in ESM projects (Vite's default) and `.mjs` otherwise. */

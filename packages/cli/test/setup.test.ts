@@ -50,17 +50,12 @@ describe("setup on a Vite project inside a larger repository", () => {
       "`npm run release:alpha` / `npm run release:beta`",
     );
 
-    // Hooks and CI belong to the repository, so they live at its root.
+    // Hooks belong to the repository, so they live at its root.
     expect(read(join(repo.root, HOOKS_FILE))).toContain("root: frontend/");
     expect(read(join(repo.root, "lefthook.yml"))).toContain(`- ${HOOKS_FILE}`);
-    expect(
-      existsSync(join(repo.root, ".github/workflows/init-react-frontend.yml")),
-    ).toBe(true);
-    expect(
-      existsSync(
-        join(repo.root, ".github/workflows/init-react-commitlint.yml"),
-      ),
-    ).toBe(true);
+    // CI belongs to the CI team: the CLI writes none.
+    expect(existsSync(join(repo.root, ".github"))).toBe(false);
+    expect(existsSync(join(repo.root, ".gitlab-ci.yml"))).toBe(false);
   });
 
   it("changes nothing when run again", () => {
@@ -94,10 +89,6 @@ describe("setup on a Vite project inside a larger repository", () => {
     expect(hooks["commit-msg"].jobs[0].run).toContain(
       'for dir in "apps/admin" "apps/web"',
     );
-    // The shared commitlint workflow still runs from the first project.
-    expect(
-      read(join(repo.root, ".github/workflows/init-react-commitlint.yml")),
-    ).toContain("working-directory: apps/web");
   });
 });
 
@@ -175,32 +166,6 @@ describe("a repository with its own lefthook config", () => {
   });
 });
 
-describe("GitLab", () => {
-  it("only adds include entries to the shared .gitlab-ci.yml", () => {
-    const repo = makeRepo("vite8", {
-      relDir: "web",
-      origin: "git@gitlab.acme.internal:team/app.git",
-    });
-    const ciPath = join(repo.root, ".gitlab-ci.yml");
-    write(
-      ciPath,
-      "# Java\nstages: [build, test]\ninclude: templates/java.yml\nbuild:\n  script: ./gradlew build # keep\n",
-    );
-    applySetup(repo.project);
-    const ci = read(ciPath);
-    expect(ci).toContain("stages: [build, test]");
-    expect(ci).toContain("- templates/java.yml");
-    expect(ci).toContain("- local: /.gitlab/init-react/web.yml");
-    expect(ci).toContain("./gradlew build # keep");
-    expect(
-      existsSync(join(repo.root, ".gitlab/init-react/commitlint.yml")),
-    ).toBe(true);
-
-    applySetup(repo.project);
-    expect(read(ciPath).match(/init-react\/web\.yml/g)).toHaveLength(1);
-  });
-});
-
 describe("README", () => {
   it("adds its block to an existing README without touching the rest", () => {
     const repo = makeRepo("vite8");
@@ -235,7 +200,7 @@ describe("README", () => {
 });
 
 describe("without git", () => {
-  it("sets up everything but hooks and CI", () => {
+  it("sets up everything but hooks", () => {
     const repo = makeRepo("vite8", { git: false });
     const plan = applySetup(repo.project);
     expect(existsSync(join(repo.project, HOOKS_FILE))).toBe(false);
@@ -290,11 +255,6 @@ describe("--skip", () => {
     const hooks = parse(read(join(repo.root, HOOKS_FILE)));
     expect(hooks["commit-msg"]).toBeUndefined();
     expect(hooks["pre-commit"]).toBeDefined();
-    expect(
-      existsSync(
-        join(repo.root, ".github/workflows/init-react-commitlint.yml"),
-      ),
-    ).toBe(false);
 
     // A later run without --skip keeps skipping it.
     const again = planSetup(repo.project, { dryRun: true, force: new Set() });
@@ -326,7 +286,7 @@ describe("--skip", () => {
 describe("--registry", () => {
   const MIRROR = "https://nexus.acme.internal/repository/npm-group";
 
-  it("installs from a mirror and points CI at it, with its own token", () => {
+  it("installs from a mirror", () => {
     const repo = makeRepo("vite8", { relDir: "web" });
     applySetup(repo.project, { registry: `${MIRROR}/` });
 
@@ -335,13 +295,6 @@ describe("--registry", () => {
     expect(read(join(repo.project, ".npmrc"))).toContain(
       `@janesenaj42:registry=${MIRROR}`,
     );
-    const workflow = read(
-      join(repo.root, ".github/workflows/init-react-web.yml"),
-    );
-    expect(workflow).toContain(`registry-url: ${MIRROR}`);
-    expect(workflow).toContain("secrets.NPM_REGISTRY_TOKEN");
-    expect(workflow).not.toContain("npm.pkg.github.com");
-
     const again = planSetup(repo.project, { dryRun: true, force: new Set() });
     expect(again.hasChanges).toBe(false);
   });
@@ -355,20 +308,6 @@ describe("--registry", () => {
     expect(read(join(repo.project, ".npmrc"))).toBe(
       `@janesenaj42:registry=${MIRROR}\n`,
     );
-  });
-
-  it("writes the mirror's auth key in GitLab CI", () => {
-    const repo = makeRepo("vite8", {
-      relDir: "web",
-      origin: "git@gitlab.acme.internal:team/app.git",
-    });
-    applySetup(repo.project, { registry: MIRROR });
-    const job = read(join(repo.root, ".gitlab/init-react/web.yml"));
-    expect(job).toContain(
-      '"//nexus.acme.internal/repository/npm-group/:_authToken=${NPM_REGISTRY_TOKEN}"',
-    );
-    expect(job).toContain("image: $NODE_IMAGE");
-    expect(job).not.toContain("npm.pkg.github.com");
   });
 
   it("rejects something that isn't a URL", () => {

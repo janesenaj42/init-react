@@ -69,7 +69,6 @@ export function applySetup(
     force?: Tool[];
     skip?: Tool[];
     registry?: string;
-    ci?: "github" | "gitlab" | "none";
     releaseBranch?: string;
   } = {},
 ) {
@@ -78,7 +77,6 @@ export function applySetup(
     force: new Set(options.force ?? []),
     skip: options.skip ? new Set(options.skip) : undefined,
     registry: options.registry,
-    ci: options.ci,
     releaseBranch: options.releaseBranch,
   });
   plan.apply();

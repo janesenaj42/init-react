@@ -21,7 +21,7 @@ export const TOOLS = [
   "commitlint",
   "lint-staged",
   "lefthook",
-  "ci",
+  "typecheck",
   "release",
 ] as const;
 export type Tool = (typeof TOOLS)[number];

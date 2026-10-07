@@ -12,7 +12,7 @@ import { runScript } from "./standard.js";
 const SCRIPT_DOCS: { names: string[]; what: string }[] = [
   { names: ["lint"], what: "Lint with ESLint" },
   { names: ["format"], what: "Format with Prettier" },
-  { names: ["format:check"], what: "Check formatting; what CI runs" },
+  { names: ["format:check"], what: "Check formatting without changing files" },
   { names: ["typecheck"], what: "Type-check with tsc" },
   { names: ["commit"], what: "Write a commit message (commitizen)" },
   {

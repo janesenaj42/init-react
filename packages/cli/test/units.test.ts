@@ -9,7 +9,6 @@ import {
   stamp,
   upsertBlock,
 } from "../src/managed.js";
-import { ciProviderFromRemote } from "../src/project.js";
 
 const viteEslint = readFileSync(
   join(import.meta.dirname, "fixtures/vite8/eslint.config.js"),
@@ -70,18 +69,5 @@ describe("Managed Blocks", () => {
     expect(result).toContain("# My App\n\nSome docs.");
     expect(result).toContain("<!-- >>> init-react >>> -->");
     expect(readBlock(result, MARKDOWN_BLOCK)).toContain("## Scripts");
-  });
-});
-
-describe("CI provider from origin", () => {
-  it.each([
-    ["git@github.com:acme/app.git", "github"],
-    ["https://github.com/acme/app", "github"],
-    ["https://gitlab.com/acme/app.git", "gitlab"],
-    ["git@gitlab.acme.internal:team/app.git", "gitlab"],
-    ["https://bitbucket.org/acme/app.git", null],
-    [null, null],
-  ])("%s -> %s", (url, expected) => {
-    expect(ciProviderFromRemote(url)).toBe(expected);
   });
 });
