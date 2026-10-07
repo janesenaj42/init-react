@@ -305,7 +305,8 @@ export function reconcileManagedFile(
   }).outcome;
 }
 
-function rangeSatisfies(current: string, wanted: string): boolean {
+/** Whether every version `current` allows also satisfies `wanted` (its minimum does). */
+export function rangeSatisfies(current: string, wanted: string): boolean {
   if (current === wanted) return true;
   if (/^(workspace|file|link|portal|catalog):/.test(current)) return true;
   const min = semver.validRange(current) ? semver.minVersion(current) : null;

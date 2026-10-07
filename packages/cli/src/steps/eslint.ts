@@ -6,7 +6,7 @@ import {
   SCAFFOLD_LINT_SCRIPTS,
 } from "../fingerprints.js";
 import { stamp } from "../managed.js";
-import type { Plan } from "../plan.js";
+import { rangeSatisfies, type Plan } from "../plan.js";
 import { configFileName, sharedPackageRange } from "./standard.js";
 
 const CANDIDATES = [
@@ -37,19 +37,31 @@ export function eslintStep(plan: Plan): void {
   const { dir, esm } = plan.project;
   const target = join(dir, configFileName("eslint.config", esm));
 
+  // A legacy .eslintrc can't import a flat config, so it gets no "add this" snippet.
+  const legacy = CANDIDATES.some(
+    (name) =>
+      name.startsWith(".eslintrc") && plan.read(join(dir, name)) !== null,
+  );
   const { outcome, replacedScaffold } = plan.reconcileConfigFile({
     tool: "eslint",
     target,
     content: stamp(BODY, "//"),
     candidates: CANDIDATES.map((name) => join(dir, name)),
     pkgKey: "eslintConfig",
-    snippet: `import standard from "${ESLINT_CONFIG}";\n// ...then spread \`...standard\` first in your exported config array`,
+    snippet: legacy
+      ? undefined
+      : `import standard from "${ESLINT_CONFIG}";\n// ...then spread \`...standard\` first in your exported config array`,
   });
+
+  // A kept config is linted by the project's own ESLint: upgrading ESLint under it would
+  // break it (ESLint 10 no longer reads .eslintrc files).
+  if (outcome === "kept") {
+    adviseKeptConfig(plan);
+    return;
+  }
 
   plan.ensureDevDependency("eslint", THIRD_PARTY_RANGES.eslint);
   plan.ensureDevDependency(ESLINT_CONFIG, sharedPackageRange(ESLINT_CONFIG));
-
-  if (outcome === "kept") return;
 
   if (replacedScaffold) {
     // The Standard's package brings these; Vite's copies would only drift.
@@ -59,6 +71,26 @@ export function eslintStep(plan: Plan): void {
   }
   replaceOxlint(plan);
   plan.setScript("eslint", "lint", "eslint .", SCAFFOLD_LINT_SCRIPTS);
+}
+
+/**
+ * The project keeps its own config and ESLint. Says what using the Standard takes, loudly
+ * when its ESLint is older than the Standard needs, since --force=eslint then also upgrades it.
+ */
+function adviseKeptConfig(plan: Plan): void {
+  const wanted = THIRD_PARTY_RANGES.eslint;
+  const current =
+    plan.pkg.devDependencies?.eslint ?? plan.pkg.dependencies?.eslint;
+  const force = `re-run with --force=eslint: it replaces your config with the Standard's (add your own rules back under "Project-specific rules go here") and installs eslint ${wanted}`;
+  if (current !== undefined && !rangeSatisfies(current, wanted)) {
+    plan.warn(
+      `ESLint version mismatch: this project has eslint ${current}; the Standard needs ${wanted} (flat config, eslint.config.js; .eslintrc files no longer load). Your config and ESLint are kept. To use the Standard, ${force}.`,
+    );
+    return;
+  }
+  plan.note(
+    `ESLint: your own config is kept. To use the Standard, add ${ESLINT_CONFIG} to it as shown above, or ${force}.`,
+  );
 }
 
 /** Vite 9+ ships oxlint; the Standard uses ESLint, so an unedited oxlint setup is removed. */
