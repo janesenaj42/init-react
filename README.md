@@ -3,7 +3,7 @@
 One command that sets up a TypeScript React project with the team's ESLint, Prettier, commit
 convention, git hooks, CI check and release scripts.
 
-## Use it in a project
+## For project teams: set up your project
 
 ### Once per machine
 
@@ -30,7 +30,8 @@ git add -A && git commit                # or: npm run commit
 ```
 
 Run it again any time to update. A file you have edited is never overwritten; `--force=<tools>`
-replaces it.
+replaces it. The scripts it adds (lint, format, commit, release) are listed in your project's own
+README, in the `## Scripts` block it writes.
 
 | Option                      | Meaning                                                                      |
 | --------------------------- | ---------------------------------------------------------------------------- |
@@ -55,15 +56,7 @@ Tools: `eslint`, `prettier`, `commitlint`, `lint-staged`, `lefthook`, `ci`, `rel
 Optional: `CI_RUNS_ON` (GitHub variable, JSON, e.g. `["self-hosted"]`) picks the runner;
 `NODE_IMAGE` (GitLab variable) replaces the `node:22` image.
 
-### Release your project
-
-```bash
-npm run release:patch   # or release:minor, release:major; on the release branch only
-npm run release:rc      # or release:alpha, release:beta; any branch
-git push --follow-tags
-```
-
-## Change the CLI or the rules
+## For maintainers of this repo: change the CLI or the rules
 
 | To change                       | Edit                                  |
 | ------------------------------- | ------------------------------------- |
@@ -90,7 +83,7 @@ cd <a React project>
 INIT_REACT_LOCAL_TARBALLS=/tmp/tgz node <this repo>/packages/cli/dist/index.js
 ```
 
-### Publish
+### Publish a new version
 
 All packages share one version. On `main`:
 
