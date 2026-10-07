@@ -18,15 +18,34 @@ const LINT_STAGED_CANDIDATES = [
   "lint-staged.config.mjs",
 ];
 
-// One glob per file kind: lint-staged runs globs in parallel, so overlapping globs
-// would race on the same file.
-export const LINT_STAGED_CONFIG = {
-  "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}": ["eslint --fix", "prettier --write"],
-  "*.{json,md,css,scss,html,yml,yaml}": "prettier --write",
-};
+const CODE_FILES = "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}";
+const OTHER_FILES = "*.{json,md,css,scss,html,yml,yaml}";
+
+/**
+ * One glob per file kind: lint-staged runs globs in parallel, so overlapping globs would
+ * race on the same file. A skipped tool isn't run: the project may not have it.
+ */
+export function lintStagedConfig(plan: Plan): Record<string, string[]> {
+  const eslint = plan.isSkipped("eslint") ? [] : ["eslint --fix"];
+  const prettier = plan.isSkipped("prettier") ? [] : ["prettier --write"];
+  const config: Record<string, string[]> = {
+    [CODE_FILES]: [...eslint, ...prettier],
+    [OTHER_FILES]: prettier,
+  };
+  return Object.fromEntries(
+    Object.entries(config).filter(([, commands]) => commands.length > 0),
+  );
+}
 
 export function lintStagedStep(plan: Plan): void {
   const { dir } = plan.project;
+  const config = lintStagedConfig(plan);
+  if (Object.keys(config).length === 0) {
+    plan.warn(
+      "lint-staged has nothing to run with both eslint and prettier skipped. Add lint-staged to --skip.",
+    );
+    return;
+  }
   plan.ensureDevDependency("lint-staged", THIRD_PARTY_RANGES["lint-staged"]);
   const ownFile = LINT_STAGED_CANDIDATES.find(
     (name) => plan.read(join(dir, name)) !== null,
@@ -40,7 +59,7 @@ export function lintStagedStep(plan: Plan): void {
   }
   if (ownFile)
     plan.delete(join(dir, ownFile), "replaced by --force=lint-staged");
-  plan.setPkgValue("lint-staged", ["lint-staged"], LINT_STAGED_CONFIG);
+  plan.setPkgValue("lint-staged", ["lint-staged"], config);
 }
 
 /** Our hooks, in their own file so the repository's lefthook config stays its own. */

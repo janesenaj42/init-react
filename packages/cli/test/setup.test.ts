@@ -321,3 +321,98 @@ describe("--registry", () => {
     ).toThrow(UserError);
   });
 });
+
+describe("a project keeping its own ESLint", () => {
+  const LEGACY_CONFIG = '{ "root": true, "extends": ["airbnb"] }\n';
+
+  it("keeps its ESLint version under a kept .eslintrc", () => {
+    const repo = makeRepo("vite8");
+    const pkgPath = join(repo.project, "package.json");
+    const pkg = readJson(pkgPath);
+    pkg.devDependencies.eslint = "^8.57.1";
+    write(pkgPath, JSON.stringify(pkg, null, 2));
+    write(join(repo.project, ".eslintrc.json"), LEGACY_CONFIG);
+
+    const plan = applySetup(repo.project);
+    const after = readJson(pkgPath);
+    expect(after.devDependencies.eslint).toBe("^8.57.1");
+    expect(after.devDependencies["@janesenaj42/eslint-config"]).toBeUndefined();
+    expect(read(join(repo.project, ".eslintrc.json"))).toBe(LEGACY_CONFIG);
+    // An older ESLint is a warning, not a note: --force=eslint would also upgrade it.
+    expect(
+      plan.entries.some(
+        (e) =>
+          e.kind === "warn" &&
+          e.text.includes("ESLint version mismatch") &&
+          e.text.includes("^8.57.1"),
+      ),
+    ).toBe(true);
+    // Its own ESLint still lints staged files.
+    expect(after["lint-staged"]["*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"]).toContain(
+      "eslint --fix",
+    );
+  });
+
+  it("replaces a legacy config and upgrades ESLint with --force=eslint", () => {
+    const repo = makeRepo("vite8");
+    const pkgPath = join(repo.project, "package.json");
+    const pkg = readJson(pkgPath);
+    pkg.devDependencies.eslint = "^8.57.1";
+    write(pkgPath, JSON.stringify(pkg, null, 2));
+    write(join(repo.project, ".eslintrc.json"), LEGACY_CONFIG);
+
+    applySetup(repo.project, { force: ["eslint"] });
+    const after = readJson(pkgPath);
+    expect(existsSync(join(repo.project, ".eslintrc.json"))).toBe(false);
+    expect(read(join(repo.project, "eslint.config.js"))).toContain(
+      "@janesenaj42/eslint-config",
+    );
+    expect(after.devDependencies.eslint).toBe("^10.0.0");
+    expect(after.devDependencies["@janesenaj42/eslint-config"]).toBe(
+      `^${OWN_VERSION}`,
+    );
+  });
+
+  it("only notes, without a warning, when the kept config's ESLint is new enough", () => {
+    const repo = makeRepo("vite8");
+    const pkgPath = join(repo.project, "package.json");
+    const pkg = readJson(pkgPath);
+    pkg.devDependencies.eslint = "^10.1.0";
+    write(pkgPath, JSON.stringify(pkg, null, 2));
+    write(join(repo.project, "eslint.config.js"), "export default [];\n");
+
+    const plan = applySetup(repo.project);
+    expect(
+      plan.entries.some((e) => e.kind === "warn" && e.text.includes("ESLint")),
+    ).toBe(false);
+    expect(
+      plan.entries.some(
+        (e) => e.kind === "note" && e.text.includes("your own config is kept"),
+      ),
+    ).toBe(true);
+  });
+
+  it("runs no ESLint from lint-staged when eslint is skipped", () => {
+    const repo = makeRepo("vite8");
+    applySetup(repo.project, { skip: ["eslint"] });
+    const pkg = readJson(join(repo.project, "package.json"));
+    expect(pkg["lint-staged"]).toEqual({
+      "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}": ["prettier --write"],
+      "*.{json,md,css,scss,html,yml,yaml}": ["prettier --write"],
+    });
+    expect(pkg.devDependencies["@janesenaj42/eslint-config"]).toBeUndefined();
+  });
+
+  it("writes no lint-staged config with eslint and prettier both skipped", () => {
+    const repo = makeRepo("vite8");
+    const plan = applySetup(repo.project, { skip: ["eslint", "prettier"] });
+    expect(readJson(join(repo.project, "package.json"))["lint-staged"]).toBe(
+      undefined,
+    );
+    expect(
+      plan.entries.some(
+        (e) => e.kind === "warn" && e.text.includes("lint-staged"),
+      ),
+    ).toBe(true);
+  });
+});
